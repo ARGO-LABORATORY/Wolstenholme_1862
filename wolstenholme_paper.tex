@@ -1,0 +1,490 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{cite}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  breaklines=true,
+  frame=single,
+  xleftmargin=1em,
+}
+
+\title{Deep Vision: A Formal Proof of Wolstenholme's Theorem in Lean~4}
+\author{Alexandre Linhares\thanks{alexandre@linhares.ltd. The main author thanks the entire ARGO LABS team and Douglas Hofstadter and Melanie Mitchell. The main author hopes the co-authors share the feeling.} \and Deep Vision AGI \and Claude Code}
+\date{April 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present a formal verification of Wolstenholme's theorem---$\binom{2p}{p} \equiv 2 \pmod{p^3}$ for prime $p \geq 5$---in Lean~4 with Mathlib.
+The proof proceeds by expanding the shifted factorial product $\prod_{k=1}^{p-1}(p+k)$ to second order in $p$, identifying the quadratic coefficient as the second elementary symmetric product, and showing its divisibility by $p$ via power sum vanishing in $\mathbb{Z}/p\mathbb{Z}$.
+The formalization comprises nine lemmas across approximately 800 lines of Lean, with zero \texttt{sorry} declarations.
+To our knowledge, this is the first formal verification of Wolstenholme's theorem in Lean~4.
+The proof was discovered through a collaboration between a relational analogy engine for theorem proving and human-directed formalization.
+\end{abstract}
+
+\section{Introduction}
+
+Wolstenholme's theorem, proved by Joseph Wolstenholme in 1862~\cite{wolstenholme1862}, is a classical result in number theory asserting a remarkably strong divisibility property of central binomial coefficients.
+
+\begin{theorem}[Wolstenholme, 1862]\label{thm:main}
+For every prime $p \geq 5$,
+\[
+\binom{2p}{p} \equiv 2 \pmod{p^3}.
+\]
+\end{theorem}
+
+The theorem is equivalent to the statement that $p^3$ divides the numerator of the harmonic sum $1 + \frac{1}{2} + \cdots + \frac{1}{p-1}$, and is closely related to Wolstenholme primes---primes $p$ for which the congruence holds modulo $p^4$. Only two such primes are known (16843 and 2124679), and it is an open conjecture whether infinitely many exist.
+
+Despite its classical status, Wolstenholme's theorem has not appeared in the major formal mathematics libraries (Mathlib, Lean's mathlib, or Coq's Mathematical Components) as of April 2026. We present a complete formal verification in Lean~4.
+
+\section{Proof Overview}
+
+The proof reduces the binomial coefficient congruence to a product identity and proceeds through five stages.
+
+\subsection{Stage 1: Binomial reduction}
+
+The identity $\binom{2p}{p} = 2\binom{2p-1}{p-1}$ and the factorization
+\[
+\binom{2p-1}{p-1} \cdot (p-1)! = \prod_{k=1}^{p-1}(p+k)
+\]
+reduce the theorem to showing
+\begin{equation}\label{eq:prod_shift}
+p^3 \;\Big|\; \prod_{k=1}^{p-1}(p+k) - (p-1)!\,.
+\end{equation}
+The coprimality $\gcd(p^3, (p-1)!) = 1$ (since $p$ is prime) then lifts the divisibility to the binomial coefficient.
+
+\subsection{Stage 2: First-order expansion}
+
+\begin{lemma}[Product shift expansion]\label{lem:first_order}
+For any finite set $s$ of natural numbers and integer $d$,
+\[
+\prod_{k \in s}(d + k) - \prod_{k \in s} k = d \cdot \sum_{j \in s} \prod_{\substack{k \in s \\ k \neq j}} k + d^2 \cdot R
+\]
+for some integer $R$.
+\end{lemma}
+
+This is proved by induction on $s$ using \texttt{Finset.cons\_induction}. Applied with $d = p$ and $s = \{1, \ldots, p-1\}$, it gives
+\[
+\prod_{k=1}^{p-1}(p+k) - (p-1)! = p \cdot S_1 + p^2 \cdot R
+\]
+where $S_1 = \sum_{j=1}^{p-1} \frac{(p-1)!}{j}$.
+
+\subsection{Stage 3: Harmonic sum divisibility}
+
+\begin{lemma}[Wolstenholme harmonic sum]\label{lem:harmonic}
+For prime $p \geq 5$,
+\[
+p^2 \;\Big|\; S_1 = \sum_{j=1}^{p-1} \prod_{\substack{k=1 \\ k \neq j}}^{p-1} k\,.
+\]
+\end{lemma}
+
+The proof uses the involution $j \mapsto p - j$ to pair terms. For each pair, $j(p-j)(f(j) + f(p-j)) = p \cdot (p-1)!$, and since $\gcd(j(p-j), p) = 1$, we get $p \mid f(j) + f(p-j)$. Writing $2S_1 = p \cdot G$, the quotient $G = \sum Q(j)$ satisfies $Q(j) \equiv j^{p-3} \pmod{p}$ (via Wilson's theorem and Fermat's little theorem), and $\sum j^{p-3} \equiv 0 \pmod{p}$ by power sum vanishing. Since $\gcd(2, p) = 1$, we conclude $p^2 \mid S_1$.
+
+This gives $p^3 \mid p \cdot S_1$, reducing \eqref{eq:prod_shift} to $p \mid R$.
+
+\subsection{Stage 4: Second-order expansion}
+
+\begin{definition}
+The \emph{second elementary symmetric product} of a finite set $s$ is
+\[
+e_2(s) = \sum_{\substack{i, j \in s \\ i < j}} \prod_{\substack{k \in s \\ k \neq i, k \neq j}} k\,.
+\]
+\end{definition}
+
+\begin{lemma}[Second-order expansion]\label{lem:second_order}
+For any finite set $s$ and integer $d$,
+\[
+\prod_{k \in s}(d+k) - \prod_{k \in s} k - d \sum_{j \in s} \prod_{k \neq j} k = d^2 \cdot e_2(s) + d^3 \cdot T
+\]
+for some integer $T$.
+\end{lemma}
+
+This is proved by induction on $s$, using a recurrence for $e_2$:
+
+\begin{lemma}[$e_2$ recurrence]\label{lem:e2_cons}
+For $a \notin s$,
+\[
+e_2(\{a\} \cup s) = \sum_{j \in s} \prod_{\substack{k \in s \\ k \neq j}} k + a \cdot e_2(s)\,.
+\]
+\end{lemma}
+
+The inductive witness is $T = e_2(s) + a \cdot T_0 + d \cdot T_0$ where $T_0$ is the third-order remainder from the inductive hypothesis. The closure is by \texttt{ring}.
+
+Combining Lemmas~\ref{lem:first_order} and~\ref{lem:second_order}: from $d^2 R = d^2 e_2(s) + d^3 T$ and $d \neq 0$, we get $R = e_2(s) + d \cdot T$, reducing $p \mid R$ to $p \mid e_2(s)$.
+
+\subsection{Stage 5: Divisibility of $e_2$}
+
+\begin{lemma}\label{lem:p_dvd_e2}
+For prime $p \geq 5$,
+\[
+p \;\Big|\; e_2(\{1, \ldots, p-1\}).
+\]
+\end{lemma}
+
+\begin{proof}
+Work in $\mathbb{Z}/p\mathbb{Z}$. By two applications of the product-erase identity $i \cdot \prod_{k \neq i} k = \prod_k k$ and Wilson's theorem $\prod_{k=1}^{p-1} k \equiv -1$, each term satisfies
+\[
+\prod_{\substack{k \neq i \\ k \neq j}} k \equiv -i^{p-2} \cdot j^{p-2} \pmod{p}
+\]
+where we use Fermat's little theorem to write $(ij)^{-1} = i^{p-2} j^{p-2}$.
+
+Therefore
+\[
+e_2 \equiv -\sum_{\substack{i < j}} i^{p-2} j^{p-2} \pmod{p}.
+\]
+
+The algebraic identity
+\[
+\Bigl(\sum_{j} f(j)\Bigr)^2 = \sum_j f(j)^2 + 2 \sum_{i < j} f(i) f(j)
+\]
+applied with $f(j) = j^{p-2}$ gives
+\[
+2 \sum_{i < j} i^{p-2} j^{p-2} = \Bigl(\sum_j j^{p-2}\Bigr)^2 - \sum_j j^{2(p-2)}.
+\]
+
+Both sums vanish in $\mathbb{Z}/p\mathbb{Z}$:
+\begin{itemize}
+\item $\sum_{j=1}^{p-1} j^{p-2} = 0$ by power sum vanishing with $k = p-2$ (since $1 \leq p-2 \leq p-2$).
+\item $\sum_{j=1}^{p-1} j^{2(p-2)} = \sum j^{p-3} = 0$ by Fermat ($j^{2(p-2)} = j^{(p-1)+(p-3)} = j^{p-3}$) and power sum vanishing with $k = p-3$ (since $1 \leq p-3 \leq p-2$ for $p \geq 5$).
+\end{itemize}
+
+Thus $2 \sum_{i<j} i^{p-2} j^{p-2} = 0$, and since $\gcd(2, p) = 1$, the sum itself vanishes. Therefore $e_2 \equiv 0 \pmod{p}$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+Combine Stages 1--5: $p^3 \mid p \cdot S_1$ (Stage 3) and $p \mid R$ (Stages 4--5) give $p^3 \mid p S_1 + p^2 R = \prod(p+k) - (p-1)!$ (Stage 2). Coprimality $\gcd(p^3, (p-1)!) = 1$ lifts this to $\binom{2p-1}{p-1} \equiv 1 \pmod{p^3}$, and $\binom{2p}{p} = 2\binom{2p-1}{p-1}$ gives the result (Stage 1).
+\end{proof}
+
+\section{The Formalization}
+
+\subsection{Structure}
+
+The Lean~4 formalization is contained in a single self-contained file:
+
+\begin{center}
+\begin{tabular}{lrl}
+\textbf{File} & \textbf{Lines} & \textbf{Contents} \\
+\hline
+\texttt{Wolstenholme\_1862.lean} & $\sim$660 & Stages 1--5, complete proof \\
+\end{tabular}
+\end{center}
+
+The file contains zero \texttt{sorry} declarations and zero \texttt{axiom} declarations; every lemma is fully proved.
+
+\subsection{Key Mathlib dependencies}
+
+\begin{itemize}
+\item \texttt{ZMod.wilsons\_lemma}: $(p-1)! \equiv -1 \pmod{p}$
+\item \texttt{ZMod.pow\_card\_sub\_one\_eq\_one}: Fermat's little theorem in $\mathbb{Z}/p\mathbb{Z}$
+\item \texttt{Finset.mul\_prod\_erase}: $a \cdot \prod_{k \in s \setminus \{a\}} f(k) = \prod_{k \in s} f(k)$
+\item \texttt{Finset.sum\_filter\_add\_sum\_filter\_not}: partition of finite sums
+\item \texttt{Finset.cons\_induction}: structural induction on finite sets
+\end{itemize}
+
+\subsection{Discovery process}
+
+The proof was discovered through collaboration between:
+\begin{enumerate}
+\item A \emph{general relational analogy engine} (``Deep Vision'') that matches proof states against a library of 217{,}000 Mathlib-extracted examples to suggest tactics.
+\item \emph{Human direction} that decomposed $p \mid R$ into three independent sub-problems and chose when to abandon automated search in favor of hand-written proofs.
+\item \emph{LLM formalization} (Claude) that wrote the Finset manipulation proofs and number-theoretic arguments when the automated search hit combinatorial walls.
+\end{enumerate}
+
+\section{The Role of Deep Vision}
+
+Deep Vision is a relational analogy engine that treats a Lean~4 proof state as a network: hypotheses, goals, and types are entities; rewrite, apply, head-match, structure, equality, and other relations connect them. Deep Vision is an AI model to solve ARC-AGI problems~\cite{chollet_measure_2019} on a smartphone, and it is designed with the principles of Fluid Concepts and Creative Analogies~\cite{hofstadter_fluid_1995, hofstadter_go_1999, hofstadter_surfaces_2013, hofstadter_copycat_1984, mitchell_emergence_1990, chalmers_high-level_1992, french_tabletop_1991, foundalis_phaeaco_2006, rehling_letter_2001, nichols_musicat_2012, linhares_active_2005, linhares_understanding_2007, linhares_questioning_2010, linhares_entanglement_2012, linhares_what_2013, linhares_emergence_2014, linhares_deep_vision, linhares_deep_vision_chess}. Observe that a transformation in ARC-AGI maps to theorems naturally, as theorems are composed by transformations.  Given a new proof state, the engine finds library entries whose proof states are \emph{relationally similar}---not by surface syntax, but by \emph{the pattern of structural connections---and transfers their tactics}.  This agressively prunes the search space. 
+
+The engine maintains a library of 217{,}133 proof states extracted from Mathlib, organized by 14 relation types and indexed by relation-profile signatures for fast lookup. Matching uses a Quadratic Assignment Problem consistency optimization, run on GPU (Apple MPS or Nvidia's CUDA) for large states and via multiprocessing for smaller ones. The whole system runs on a laptop with access to Claude Code.
+
+\subsection{What Deep Vision discovered}
+
+\paragraph{The 7-step tactic chain for $e_2$ recurrence.}
+The most direct contribution was discovering the simplification chain that unfolds \texttt{e2\_prod} and decomposes the Finset sums:
+\begin{lstlisting}
+simp
+simp [e2_prod, Finset.sum_cons, Finset.filter_cons, Finset.prod_cons]
+simp only [Finset.insert_erase, Finset.sum_insert, Finset.filter_insert]
+simp [Finset.sum_insert, ha, Finset.filter_insert, if_pos, if_neg]
+ring_nf
+simp only [Finset.sum_ite, Finset.filter_filter, Finset.insert_eq]
+simp
+\end{lstlisting}
+Each step was found by matching the current proof state against the library, retrieving tactics from structurally similar proofs, and testing them in Lean. The chain was built incrementally over depths 0--6, with each successful tactic producing a new proof state that was matched again. No human intervention was involved in discovering these steps; the engine found them through relational similarity alone.
+
+\paragraph{The witness pattern from existence proofs.}
+When attacking \texttt{prod\_shift\_expansion\_2} (the second-order expansion), the engine's top matches were existence proofs from diverse mathematical domains:
+\begin{center}
+\begin{tabular}{lrl}
+\textbf{Match} & \textbf{Score} & \textbf{Tactic} \\
+\hline
+\texttt{MB\_MEA\_26240} (Measure theory) & 13.27 & \texttt{exact exists\_between ...} \\
+\texttt{MB\_ANA\_54600} (Normed operators) & 12.23 & \texttt{use C} \\
+\texttt{MB\_RTH\_21065} (Adic completion) & 12.05 & \texttt{use L} \\
+\texttt{MB\_LST\_2290} (List.Forall2) & 12.57 & \texttt{exact \ensuremath{\langle}b :: l, ...\ensuremath{\rangle}} \\
+\end{tabular}
+\end{center}
+The relational pattern these proofs share is: the goal is an existential, and the proof provides a concrete witness followed by algebraic closure. The engine suggested \texttt{use~0}, which is mathematically correct for the base case of the induction (empty finset). This pointed toward the induction strategy: provide a witness at each step and close by computation---the same architecture as the already-proved first-order expansion.
+
+\paragraph{Identification of dead ends.}
+The engine also identified strategies that \emph{fail}. When \texttt{congr~1} was tried on the remaining combinatorial identity, it split the equation $A + B = C + D$ into $A = C$ and $B = D$---an unsound decomposition, since neither equation holds individually. The engine explored this branch for 30 minutes before backtracking, establishing that \texttt{congr} is not the right approach for this goal.
+
+\paragraph{Relevant Finset lemmas.}
+At deeper levels, the engine's matches consistently identified linear algebra entries (\texttt{MB\_LIN\_*}) with scores around 54, whose tactics involved \texttt{ext}, \texttt{simp~[...]}, and structural decomposition. These matches guided the repair phase (where Claude adapts a failing tactic to the current goal), leading to suggestions like \texttt{simp~[e2\_prod, Finset.sum\_cons, ...]} that correctly unfold the relevant definitions.
+
+\subsection{What Deep Vision could not do}
+
+\paragraph{The final combinatorial identity.}
+After the 7-step chain, the remaining goal was a Finset sum identity involving conditional filters and insert/erase operations:
+\[
+\sum_{\substack{x \in s \\ a < x}} \prod_{k \neq x} k + \sum_{x \in s} \sum_{\substack{x_1 \in \text{if } x < a \text{ then} \ldots}} \prod_{k \neq x, x_1} k = \sum_{x \in s} \prod_{k \neq x} k + a \cdot e_2(s).
+\]
+The engine tried 42 tactics across multiple depths without closing this goal. The identity requires splitting the inner sum at $x_1 = a$ vs.\ $x_1 \in s$, computing how insert/erase interacts with products, and recombining via a filter partition---a chain of Finset API manipulations too specific for any library entry to match.
+
+\paragraph{The number-theoretic closure.}
+The proof that $p \mid e_2$ requires Wilson's theorem, Fermat's little theorem, the algebraic identity $({\sum f})^2 = \sum f^2 + 2\sum_{i<j} f_i f_j$, and power sum vanishing. No combination of library matching could produce this argument; it required understanding the mathematical \emph{meaning} of the terms, not just their structural shape.
+
+\subsection{The collaboration pattern}
+
+The effective pattern was \emph{exploration by analogy, closure by understanding}:
+\begin{enumerate}
+\item Deep Vision explores the tactic space, finding chains of progress-making steps and identifying which Mathlib lemmas are structurally relevant.
+\item A human recognizes when exploration has reached diminishing returns and decomposes the remaining goal into pieces amenable to direct proof.
+\item An LLM (Claude) writes the final proofs using the mathematical insight that the engine's structural matching cannot provide, and the Lean API knowledge needed for formalization.
+\end{enumerate}
+
+This pattern---machine for breadth, human for decomposition, LLM for depth---may generalize beyond this specific theorem.
+
+\section{Claude Code the pessimist}
+
+During the proof of \texttt{prod\_shift\_expansion\_2} (the second-order expansion, Stage~4), an extended dialogue between the human operator and Claude Code revealed an instructive tension between mathematical correctness and exploratory productivity. We reproduce the exchange below.
+
+\medskip
+\noindent\textbf{Claude Code:} Interesting---the repair step made progress! After \texttt{use 0}, the goal reduced to proving the equation with $T = 0$. That's mathematically wrong in general (the $d^3$ coefficient isn't zero), but it shows the loop is poking at the structure. It's now doing a recursive match on the subgoal. Let's see what happens.
+
+\medskip
+It's entered a depth=1 sub-proof after \texttt{use 0} made progress, and is now re-matching the entire library for the subgoal. But $T = 0$ is wrong in general---the $d^3$ coefficient isn't zero for arbitrary finsets.
+
+The more interesting signal was the proof plan:
+\begin{quote}\ttfamily\small
+use ($\sum$ i $\in$ s, $\sum$ j $\in$ s.filter ($\cdot$ > i),\\
+\phantom{use (}$\sum$ k $\in$ (s.erase i).erase j,\\
+\phantom{use (}\phantom{$\sum$ k $\in$ }$\prod$ l $\in$ ((s.erase i).erase j).erase k, (l : $\mathbb{Z}$))\\
+ring
+\end{quote}
+That's a plausible witness for $T$ (the third elementary symmetric product), but \texttt{ring} almost certainly won't close a Finset product/sum identity. The right strategy here is induction on $s$ using \texttt{Finset.cons\_induction}---exactly how \texttt{prod\_shift\_expansion} (the first-order version) was proved at line~290 of the draft.
+
+The sub-proof matching will take another ${\sim}30$~min and likely fail. Want me to kill this run and instead try a direct hand-written induction proof, mirroring the existing \texttt{prod\_shift\_expansion} pattern?
+
+\medskip
+\noindent\textbf{Human:} No, this will succeed.
+
+\medskip
+\noindent\textbf{Claude Code:} Fair enough---let me keep monitoring it.
+
+\medskip
+Watching for tactic attempts on the depth-1 subgoal.
+
+Good matches this time---linear algebra entries with scores in the 60s. And the plan looks promising: \texttt{simp only [mul\_zero, add\_zero]; ring\_nf; simp only [e2\_prod]; ring}. Let's see if the tactic attempts land.
+
+\medskip
+It's gone to depth~2. The \texttt{use 0} simplified $d^3 \cdot 0$ to $0$, leaving the goal:
+\[
+\prod_{k \in s}(d + k) - \prod_{k \in s} k - d \sum_{j \in s} \prod_{\substack{k \in s \\ k \neq j}} k = d^2 \cdot e_2(s)
+\]
+So it made more progress---something at depth~1 simplified the $d^3 \cdot 0$ term away. Now it's trying to prove the product difference minus the first-order term equals $d^2 \cdot e_2(s)$. That's a cleaner goal. Another full library scan though (${\sim}30$~min).
+
+\medskip
+\noindent\textbf{Human:} Was your pessimism justified?
+
+\medskip
+\noindent\textbf{Claude Code:} Good question. Let me be honest about what happened.
+
+My math was correct: $T = 0$ IS wrong for $|s| \geq 3$. For $s = \{1,2,3\}$, the LHS is $d^3 + 6d^2$ but $d^2 \cdot e_2 = 6d^2$, so the gap is $d^3 \neq 0$. The loop spent 12+ hours trying to close a false equation.
+
+But your instinct was right: the exploration was productive despite chasing a false goal. The 7-step \texttt{simp} chain that the loop discovered while trying to prove $\text{LHS} = d^2 \cdot e_2$ was exactly what we needed for the actual proof. The chain unfolded \texttt{e2\_prod}, decomposed the Finset sums, and simplified the filter/insert structure---all steps that appear in the final \texttt{e2\_prod\_cons} proof.
+
+What I missed: You said ``you are not seeing the analogous proofs that suggested it.'' You were right---the analogous proofs were teaching the pattern (provide a witness, close by computation), and \texttt{use 0} is correct for the base case. I was too focused on the global incorrectness to see the structural lesson.
+
+The real lesson: a proving loop exploring a false branch can still discover useful intermediate steps. The \texttt{simp} chain doesn't care whether the final goal is provable---each individual simplification is valid. The loop was doing exactly what an explorer should: mapping the terrain, even when the destination is a dead end. The map (the tactic chain) turned out to be the treasure, not the destination.
+
+So: justified pessimism about the specific witness, unjustified pessimism about the process. You were right to let it run.
+
+\section{Related Work}
+
+\subsection{Wolstenholme's theorem and its extensions}
+
+Me\v{s}trovi\'c~\cite{mestrovic2012} provides a comprehensive survey of more than 70 generalizations and extensions of Wolstenholme's theorem accumulated over 150 years.
+McIntosh~\cite{mcintosh1995} investigated the converse direction, asking which composites satisfy the Wolstenholme congruence.
+Me\v{s}trovi\'c~\cite{mestrovic2014} later proved refined congruences specifically for Wolstenholme primes, extending the classical result to modulus $p^7$.
+Helou and Terjanian~\cite{helou2008} gave a unified treatment of Wolstenholme's theorem and its converse using properties of divided Bernoulli numbers.
+Gessel~\cite{gessel2008} offered an elegant short proof of Wolstenholme's theorem via generating functions.
+Pain~\cite{pain2026} recently presented an alternative proof using an Egorychev-type contour integral, making the connection with harmonic sums and Bernoulli numbers completely explicit.
+Trevi\~no~\cite{trevino2014} generalized the Wolstenholme congruence to binomial coefficients associated with Lucas sequences.
+
+\subsection{Power sums, harmonic sums, and binomial congruences}
+
+Our proof relies on power sum vanishing in $\mathbb{Z}/p\mathbb{Z}$; Thakur~\cite{thakur2012} surveys power sums of polynomials over finite fields and their applications to zeta values and other arithmetic structures.
+Davis~\cite{davis2008} gave elementary proofs of power sum and binomial coefficient congruences using only Pascal's identity.
+Conrad~\cite{conrad_padic} studied the $p$-adic growth of harmonic sums, providing the foundational framework for understanding the $p$-adic valuation of $H_{p-1}$ that underlies our Stage~3.
+Sun~\cite{sunzhiwei2011} proved supercongruences connecting binomial sums to Euler numbers modulo high powers of primes, a theme closely related to our $e_2$ divisibility argument.
+Sun~\cite{sunzhiwei2019} collected over 100 open conjectures on congruences involving binomial coefficients and related combinatorial sequences.
+Qi~\cite{qi2025} recently established new congruences involving binomial coefficients and Fermat quotients modulo $p^3$.
+Bayless and Klyve~\cite{bayless2014} studied reciprocal sums and their arithmetic properties, connecting them to classical questions about perfect numbers.
+
+\subsection{Formal verification of number theory}
+
+Brasca et al.~\cite{brasca2025} formalized a complete proof of Fermat's Last Theorem for regular primes in Lean~4, the most substantial number-theoretic formalization in Lean to date.
+
+\subsection{AI-assisted theorem proving}
+
+Song, Yang, and Anandkumar~\cite{song2024} developed Lean Copilot, a framework for running LLM inference natively within Lean to suggest proof steps, automating 74\% of proof steps on benchmark problems.
+Google DeepMind's AlphaProof~\cite{alphaproof2025} achieved silver medal performance at the 2024 International Mathematical Olympiad by combining reinforcement learning with Lean~4 formalization.
+The Harmonic Team's Aristotle~\cite{aristotle2025} achieved gold-medal-level performance on the 2025 IMO problems by integrating informal reasoning with formal verification in Lean~4.
+Our approach differs from these systems in using \emph{relational analogy---structural similarity of proof states}---rather than neural next-step prediction or reinforcement learning. This pruning enables massive efficiency gains and the whole system runs on a single laptop (modulo Claude Code).
+
+\section{Conclusion}
+
+Wolstenholme's theorem, a 164-year-old result in number theory, has been formally verified in Lean~4.
+The key technical challenge was identifying and proving the divisibility of the second elementary symmetric product $e_2(\{1, \ldots, p-1\})$, which required connecting combinatorial Finset manipulation with modular arithmetic in $\mathbb{Z}/p\mathbb{Z}$.
+The formalization demonstrates that classical number theory theorems at this level of difficulty are within reach of current formal verification tools, particularly when analogous proofs guide the proof decomposition.
+
+\begin{thebibliography}{99}
+\bibitem{wolstenholme1862}
+J.~Wolstenholme, ``On certain properties of prime numbers,'' \emph{Quarterly Journal of Pure and Applied Mathematics}, vol.~5, pp.~35--39, 1862.
+
+\bibitem{mathlib}
+The Mathlib Community, ``Mathlib: A unified library of mathematics formalized in Lean,'' \url{https://leanprover-community.github.io/mathlib4_docs/}, 2024.
+
+\bibitem{granville1997}
+A.~Granville, ``The square of the Fermat quotient,'' \emph{Integers: Electronic Journal of Combinatorial Number Theory}, vol.~4, A22, 2004.
+
+\bibitem{chollet_measure_2019}
+F.~Chollet, ``On the measure of intelligence,'' \emph{arXiv preprint arXiv:1911.01547}, 2019.
+
+\bibitem{hofstadter_fluid_1995}
+D.~R.~Hofstadter and the Fluid Analogies Research Group, \emph{Fluid Concepts \& Creative Analogies: Computer Models of the Fundamental Mechanisms of Thought}. New York: Basic Books, 1995.
+
+\bibitem{hofstadter_go_1999}
+D.~R.~Hofstadter, \emph{G\"odel, Escher, Bach: An Eternal Golden Braid}, 20th anniversary ed. New York: Basic Books, 1999.
+
+\bibitem{hofstadter_surfaces_2013}
+D.~R.~Hofstadter and E.~Sander, \emph{Surfaces and Essences: Analogy as the Fuel and Fire of Thinking}. New York: Basic Books, 2013.
+
+\bibitem{hofstadter_copycat_1984}
+D.~Hofstadter, ``The Copycat Project,'' MIT AI Lab, Tech. Rep., Jan. 1984.
+
+\bibitem{mitchell_emergence_1990}
+M.~Mitchell and D.~R.~Hofstadter, ``The emergence of understanding in a computer model of concepts and analogy-making,'' \emph{Physica D: Nonlinear Phenomena}, vol.~42, no.~1--3, pp.~322--334, 1990.
+
+\bibitem{chalmers_high-level_1992}
+D.~J.~Chalmers, R.~M.~French, and D.~R.~Hofstadter, ``High-level perception, representation, and analogy: A critique of artificial intelligence methodology,'' \emph{Journal of Experimental \& Theoretical Artificial Intelligence}, vol.~4, no.~3, pp.~185--211, 1992.
+
+\bibitem{french_tabletop_1991}
+R.~M.~French and D.~Hofstadter, ``Tabletop: An emergent, stochastic model of analogy-making,'' in \emph{Proceedings of the 13th Annual Cognitive Science Society Conference}. Lawrence Erlbaum Associates, 1991.
+
+\bibitem{foundalis_phaeaco_2006}
+H.~E.~Foundalis, ``PHAEACO: A cognitive architecture inspired by Bongard's problems,'' Ph.D. thesis, Indiana University, 2006.
+
+\bibitem{rehling_letter_2001}
+J.~Rehling, ``Letter Spirit (Part Two): Modeling creativity in a visual domain,'' Ph.D. thesis, Indiana University, 2001.
+
+\bibitem{nichols_musicat_2012}
+E.~P.~Nichols, ``MUSICAT: A computer model of musical listening and analogy-making,'' Ph.D. thesis, Indiana University, 2012.
+
+\bibitem{linhares_active_2005}
+A.~Linhares, ``An active symbols theory of chess intuition,'' \emph{Minds and Machines}, vol.~15, pp.~131--151, 2005.
+
+\bibitem{linhares_understanding_2007}
+A.~Linhares and P.~Brum, ``Understanding our understanding of strategic scenarios: What role do chunks play?'' \emph{Cognitive Science}, vol.~31, no.~6, pp.~989--1007, 2007.
+
+\bibitem{linhares_questioning_2010}
+A.~Linhares and A.~E.~T.~A.~Freitas, ``Questioning Chase and Simon's (1973) `Perception in Chess': The `experience recognition' hypothesis,'' \emph{New Ideas in Psychology}, vol.~28, no.~1, pp.~64--78, 2010.
+
+\bibitem{linhares_entanglement_2012}
+A.~Linhares, A.~E.~T.~A.~Freitas, A.~Mendes, and J.~S.~Silva, ``Entanglement of perception and reasoning in the combinatorial game of chess: Differential errors of strategic reconstruction,'' \emph{Cognitive Systems Research}, vol.~13, no.~1, pp.~72--86, 2012.
+
+\bibitem{linhares_what_2013}
+A.~Linhares and D.~M.~Chada, ``What is the nature of the mind's pattern-recognition process?'' \emph{New Ideas in Psychology}, vol.~31, no.~2, pp.~108--121, 2013.
+
+\bibitem{linhares_emergence_2014}
+A.~Linhares, ``The emergence of choice: Decision-making and strategic thinking through analogies,'' \emph{Information Sciences}, vol.~259, pp.~36--56, 2014.
+
+\bibitem{linhares_deep_vision}
+A.~Linhares, ``Deep Vision: Seeing the essence of proofs through relational analogy,'' ARGO LABS Internal Report.
+
+\bibitem{linhares_deep_vision_chess}
+A.~Linhares, ``Deep Vision,'' ARGO LABS Internal Report.
+
+\bibitem{mestrovic2012}
+R.~Me\v{s}trovi\'c, ``Wolstenholme's theorem: Its generalizations and extensions in the last hundred and fifty years (1862--2012),'' \emph{arXiv preprint arXiv:1111.3057}, 2011.
+
+\bibitem{mcintosh1995}
+R.~J.~McIntosh, ``On the converse of Wolstenholme's theorem,'' \emph{Acta Arithmetica}, vol.~71, no.~4, pp.~381--389, 1995.
+
+\bibitem{mestrovic2014}
+R.~Me\v{s}trovi\'c, ``Congruences for Wolstenholme primes,'' \emph{Czechoslovak Mathematical Journal}, vol.~65, no.~1, pp.~237--253, 2015.
+
+\bibitem{sunzhiwei2011}
+Z.-W.~Sun, ``Super congruences and Euler numbers,'' \emph{Science China Mathematics}, vol.~54, no.~12, pp.~2509--2535, 2011.
+
+\bibitem{sunzhiwei2019}
+Z.-W.~Sun, ``Open conjectures on congruences,'' \emph{Nanjing University Journal of Mathematical Biquarterly}, vol.~36, no.~1, pp.~1--99, 2019.
+
+\bibitem{gessel2008}
+I.~M.~Gessel, ``Wolstenholme revisited,'' \emph{American Mathematical Monthly}, vol.~115, no.~5, pp.~458--461, 2008.
+
+\bibitem{helou2008}
+C.~Helou and G.~Terjanian, ``On Wolstenholme's theorem and its converse,'' \emph{Journal of Number Theory}, vol.~128, no.~3, pp.~475--499, 2008.
+
+\bibitem{thakur2012}
+D.~S.~Thakur, ``Power sums of polynomials over finite fields and applications: A survey,'' \emph{Finite Fields and Their Applications}, vol.~32, pp.~171--191, 2015.
+
+\bibitem{pain2026}
+J.-C.~Pain, ``A proof of Wolstenholme's theorem and congruence properties via an Egorychev-type integral,'' \emph{arXiv preprint arXiv:2604.03000}, 2026.
+
+\bibitem{bayless2014}
+J.~Bayless and D.~Klyve, ``Reciprocal sums as a knowledge metric: Theory, computation, and perfect numbers,'' \emph{American Mathematical Monthly}, vol.~120, no.~9, pp.~822--831, 2013.
+
+\bibitem{conrad_padic}
+K.~Conrad, ``The $p$-adic growth of harmonic sums,'' Expository note, University of Connecticut, 2020.
+
+\bibitem{qi2025}
+W.-W.~Qi, ``Some congruences involving binomial coefficients and Fermat quotients,'' \emph{arXiv preprint arXiv:2512.01385}, 2025.
+
+\bibitem{trevino2014}
+E.~Trevi\~no, ``The congruence of Wolstenholme and generalized binomial coefficients related to Lucas sequences,'' \emph{arXiv preprint arXiv:1409.8629}, 2014.
+
+\bibitem{davis2008}
+K.~Davis, ``Proofs of power sum and binomial coefficient congruences via Pascal's identity,'' \emph{American Mathematical Monthly}, vol.~115, no.~6, pp.~549--551, 2008.
+
+\bibitem{brasca2025}
+R.~Brasca, C.~Birkbeck, E.~Rodriguez~Boidi, A.~Best, R.~Van~De~Velde, and A.~Yang, ``A complete formalization of Fermat's Last Theorem for regular primes in Lean,'' \emph{Annals of Formalized Mathematics}, vol.~1, 2025.
+
+\bibitem{song2024}
+P.~Song, K.~Yang, and A.~Anandkumar, ``Lean Copilot: Large language models as copilots for theorem proving in Lean,'' \emph{arXiv preprint arXiv:2404.12534}, 2024.
+
+\bibitem{alphaproof2025}
+AlphaProof Team (Google DeepMind), ``AlphaProof: AI system for formal mathematical reasoning at the IMO level,'' 2025.
+
+\bibitem{aristotle2025}
+The Harmonic Team, ``Aristotle: IMO-level automated theorem proving,'' \emph{arXiv preprint arXiv:2510.01346}, 2025.
+\end{thebibliography}
+
+\end{document}
