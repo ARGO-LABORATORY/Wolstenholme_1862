@@ -186,7 +186,7 @@ The Lean~4 formalization is contained in a single self-contained file:
 \end{tabular}
 \end{center}
 
-The file contains zero \texttt{sorry} declarations and zero \texttt{axiom} declarations; every lemma is fully proved.
+The file contains zero \texttt{sorry} declarations and zero \texttt{axiom} declarations; every lemma is fully proved. The complete source is available at \url{https://github.com/ARGO-LABORATORY/Wolstenholme_1862/blob/main/Wolstenholme_1862.lean}.
 
 \subsection{Key Mathlib dependencies}
 
@@ -209,7 +209,7 @@ The proof was discovered through collaboration between:
 
 \section{The Role of Deep Vision}
 
-Deep Vision is a relational analogy engine that treats a Lean~4 proof state as a network: hypotheses, goals, and types are entities; rewrite, apply, head-match, structure, equality, and other relations connect them. Deep Vision is an AI model to solve ARC-AGI problems~\cite{chollet_measure_2019} on a smartphone, and it is designed with the principles of Fluid Concepts and Creative Analogies~\cite{hofstadter_fluid_1995, hofstadter_go_1999, hofstadter_surfaces_2013, hofstadter_copycat_1984, mitchell_emergence_1990, chalmers_high-level_1992, french_tabletop_1991, foundalis_phaeaco_2006, rehling_letter_2001, nichols_musicat_2012, linhares_active_2005, linhares_understanding_2007, linhares_questioning_2010, linhares_entanglement_2012, linhares_what_2013, linhares_emergence_2014, linhares_deep_vision, linhares_deep_vision_chess}. Observe that a transformation in ARC-AGI maps to theorems naturally, as theorems are composed by transformations.  Given a new proof state, the engine finds library entries whose proof states are \emph{relationally similar}---not by surface syntax, but by \emph{the pattern of structural connections---and transfers their tactics}.  This agressively prunes the search space. 
+Deep Vision is a relational analogy engine that treats a Lean~4 proof state as a network: hypotheses, goals, and types are entities; rewrite, apply, head-match, structure, equality, and other relations connect them. Deep Vision is an AI model to solve ARC-AGI problems~\cite{chollet_measure_2019} on a smartphone, and it is designed with the principles of Fluid Concepts and Creative Analogies~\cite{hofstadter_fluid_1995, hofstadter_go_1999, hofstadter_surfaces_2013, hofstadter_copycat_1984, mitchell_emergence_1990, chalmers_high-level_1992, french_tabletop_1991, foundalis_phaeaco_2006, rehling_letter_2001, nichols_musicat_2012, linhares_active_2005, linhares_understanding_2007, linhares_questioning_2010, linhares_entanglement_2012, linhares_what_2013, linhares_emergence_2014, linhares_deep_vision, linhares_deep_vision_chess, mitchell_analogy_1993}. Observe that a transformation in ARC-AGI maps to theorems naturally, as theorems are composed by transformations.  Given a new proof state, the engine finds library entries whose proof states are \emph{relationally similar}---not by surface syntax, but by \emph{the pattern of structural connections---and transfers their tactics}.  This agressively prunes the search space. 
 
 The engine maintains a library of 217{,}133 proof states extracted from Mathlib, organized by 14 relation types and indexed by relation-profile signatures for fast lookup. Matching uses a Quadratic Assignment Problem consistency optimization, run on GPU (Apple MPS or Nvidia's CUDA) for large states and via multiprocessing for smaller ones. The whole system runs on a laptop with access to Claude Code.
 
@@ -389,6 +389,9 @@ D.~R.~Hofstadter and E.~Sander, \emph{Surfaces and Essences: Analogy as the Fuel
 
 \bibitem{hofstadter_copycat_1984}
 D.~Hofstadter, ``The Copycat Project,'' MIT AI Lab, Tech. Rep., Jan. 1984.
+
+\bibitem{mitchell_analogy_1993}
+M.~Mitchell, \emph{Analogy-Making as Perception: A Computer Model}. Cambridge, MA: The MIT Press, 1993.
 
 \bibitem{mitchell_emergence_1990}
 M.~Mitchell and D.~R.~Hofstadter, ``The emergence of understanding in a computer model of concepts and analogy-making,'' \emph{Physica D: Nonlinear Phenomena}, vol.~42, no.~1--3, pp.~322--334, 1990.
