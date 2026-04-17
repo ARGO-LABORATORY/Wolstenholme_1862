@@ -107,7 +107,8 @@ import Mathlib
   title   = {Deep Vision: A Formal Proof of Wolstenholme's Theorem in {Lean}~4},
   author  = {Linhares, Alexandre and {Deep Vision AGI} and {Claude Code}},
   year    = {2026},
-  month   = {April}
+  month   = {April},
+  publication = {Argolab.org Report for Dissemination}
 }
 ```
 
