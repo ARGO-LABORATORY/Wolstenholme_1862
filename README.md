@@ -92,6 +92,18 @@ The proof was discovered through a collaboration between three agents:
 
 The effective pattern was *exploration by analogy, closure by understanding*: machine for breadth, human for decomposition, LLM for depth.
 
+## Deep Vision vs. Deep Neural Networks
+
+Deep Vision is the technology behind ARGO LABORATORY's entry to [Chollet's ARC-AGI](https://arcprize.org/) challenge. It represents a fundamentally different paradigm from deep learning:
+
+| | **Deep Vision** | **Deep Neural Networks** |
+|---|---|---|
+| **Explainability** | Full step-by-step trace: which relations matched, which entities corresponded, why a particular analogy was chosen. Can explain to any judge why a decision was made --- and what to change to get a different outcome. | Black box. Gradient-based attribution methods (SHAP, LIME) are post-hoc approximations, not the actual reasoning path. |
+| **Efficiency** | < $0.01 per task suite. Runs in a browser, in JavaScript, on a CPU, on a phone, in airplane mode. The NP-hard matching runs on commodity hardware --- a MacBook Air's GPU found this proof of Wolstenholme's theorem. | $2+ per task suite (frontier models). Requires data-center GPUs, high-bandwidth interconnects, megawatts of power. |
+| **Representation** | Emergent and distributed. The system *crafts* its representation as it studies each problem --- entities, relations, and correspondences emerge from the structure of the specific situation. | Fixed. Representations are learned once during training and frozen at inference. The network cannot restructure its representation for a novel problem. |
+| **Paradigm** | Relational analogy as cognition. Intelligence is perceiving shared relational structure across superficially different situations (Hofstadter, 1995). Domain-independent: the same matching engine handles chess, theorem proving, and ARC-AGI tasks. | Statistical pattern completion. Intelligence is next-token prediction over massive corpora. Domain generality comes from scale, not from architectural principles. |
+| **Accessibility** | Fluid general intelligence in your pocket, regardless of who you are, where you live, or what you can afford. Runs offline, on-device, no API keys, no subscriptions, no data leaving the device. | Controlled by a handful of data-center owners. Requires internet, API access, and per-token payment. Concentrates capability in the hands of those who can afford the infrastructure. |
+
 ## Building
 
 Requires Lean 4 and Mathlib. The formalization is a single self-contained file with one import:
