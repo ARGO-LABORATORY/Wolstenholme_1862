@@ -11,7 +11,7 @@ The proof contains **zero `sorry`** declarations and **zero `axiom`** declaratio
 
 | File | Description |
 |------|-------------|
-| `Wolstenholme_1862.lean` | Complete Lean 4 formalization (~800 lines) |
+| `Wolstenholme_1862.lean` | Complete Lean 4 formalization (~660 lines) |
 | `wolstenholme_paper.tex` | Accompanying paper (LaTeX source) |
 | `wolstenholme_paper.pdf` | Compiled paper |
 
